@@ -1,9 +1,10 @@
 package benchparse
 
 import (
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const readmeExample = `commit: 7cd9055

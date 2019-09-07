@@ -11,7 +11,7 @@ import (
 
 type Run struct {
 	Configuration KeyValueList
-	Results []BenchmarkResult
+	Results       []BenchmarkResult
 }
 
 type KeyValueDecoder struct {
@@ -32,7 +32,7 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 	if len(fields) < 4 {
 		return nil, errNotEnoughFields
 	}
-	if len(fields) % 2 != 0 {
+	if len(fields)%2 != 0 {
 		return nil, errEvenFields
 	}
 	name := fields[0]
@@ -50,7 +50,7 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 		Name:       name,
 		Iterations: iterations,
 	}
-	for i := 2;i<len(fields);i+=2 {
+	for i := 2; i < len(fields); i += 2 {
 		unit := fields[i+1]
 		val, err := strconv.ParseFloat(fields[i], 64)
 		if err != nil {
@@ -91,18 +91,18 @@ func (k *KeyValueDecoder) decode(kvLine string) (*KeyValue, error) {
 		return nil, errInvalidKeyValueUppercase
 	}
 	return &KeyValue{
-		Key: key,
+		Key:   key,
 		Value: strings.TrimLeftFunc(value, unicode.IsSpace),
 	}, nil
 }
 
 type Decoder struct {
-	KeyValueDecoder KeyValueDecoder
+	KeyValueDecoder        KeyValueDecoder
 	BenchmarkResultDecoder BenchmarkResultDecoder
 }
 
 func (d Decoder) Decode(in io.Reader) (*Run, error) {
-	ret := &Run {}
+	ret := &Run{}
 	b := bufio.NewScanner(in)
 	for b.Scan() {
 		recentLine := strings.TrimSpace(b.Text())
@@ -156,7 +156,7 @@ func (c KeyValueList) Lookup(key string) (string, bool) {
 }
 
 type KeyValue struct {
-	Key string
+	Key   string
 	Value string
 }
 
@@ -169,7 +169,7 @@ func (k KeyValue) String() string {
 
 type BenchmarkValue struct {
 	Value float64
-	Unit string
+	Unit  string
 }
 
 func (b BenchmarkValue) String() string {
@@ -177,9 +177,9 @@ func (b BenchmarkValue) String() string {
 }
 
 type BenchmarkResult struct {
-	Name string
+	Name       string
 	Iterations int
-	Values []BenchmarkValue
+	Values     []BenchmarkValue
 }
 
 func (b BenchmarkResult) NameAsKeyValue() KeyValueList {
@@ -189,7 +189,7 @@ func (b BenchmarkResult) NameAsKeyValue() KeyValueList {
 		sections := strings.SplitN(p, "=", 2)
 		if len(sections) <= 1 {
 			keys = append(keys, KeyValue{
-				Key:   p,
+				Key: p,
 			})
 		} else {
 			keys = append(keys, KeyValue{
@@ -198,7 +198,7 @@ func (b BenchmarkResult) NameAsKeyValue() KeyValueList {
 			})
 		}
 	}
-	return KeyValueList{keys:keys}
+	return KeyValueList{keys: keys}
 }
 
 func (b BenchmarkResult) BaseName() string {
@@ -206,7 +206,7 @@ func (b BenchmarkResult) BaseName() string {
 }
 
 func (b BenchmarkResult) String() string {
-	ret := make([]string, 0, len(b.Values) + 2)
+	ret := make([]string, 0, len(b.Values)+2)
 	ret = append(ret, b.Name, strconv.Itoa(b.Iterations))
 	for _, v := range b.Values {
 		ret = append(ret, v.String())
