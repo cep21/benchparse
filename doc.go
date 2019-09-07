@@ -1,7 +1,5 @@
 /*
-Package benchparse is a go template repository for GitHub
-
-Explain what this code tries to do.  Unlike the readme, assume they are already bought in to using your library and
-focus on generally what it does and how to do it.
+Package benchparse allows you to easily parse the output format of Go's benchmark results, as well as other outputs
+that conform to the benchmark spec.
 */
 package benchparse

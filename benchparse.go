@@ -9,14 +9,19 @@ import (
 	"unicode"
 )
 
+// Run is the entire parsed output of a single benchmark run
 type Run struct {
+	// Configuration is the key/value headers of the benchmark run
 	Configuration KeyValueList
-	Results       []BenchmarkResult
+	// Results are the result of running each benchmark
+	Results []BenchmarkResult
 }
 
+// KeyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
 type KeyValueDecoder struct {
 }
 
+// BenchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
 type BenchmarkResultDecoder struct {
 }
 
@@ -96,11 +101,14 @@ func (k *KeyValueDecoder) decode(kvLine string) (*KeyValue, error) {
 	}, nil
 }
 
+// Decoder helps configure how to decode benchmark results.
 type Decoder struct {
 	KeyValueDecoder        KeyValueDecoder
 	BenchmarkResultDecoder BenchmarkResultDecoder
 }
 
+// Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
+// for example from reading from in.
 func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	ret := &Run{}
 	b := bufio.NewScanner(in)
@@ -122,10 +130,13 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	return ret, nil
 }
 
+// KeyValueList is an ordered list of possibly repeating key/value pairs where a key may happen more than once
 type KeyValueList struct {
 	keys []KeyValue
 }
 
+// AsMap returns the key value pairs as a map using only the first key's value if a key is duplicated in the list.
+// Runs in O(N).
 func (c KeyValueList) AsMap() map[string]string {
 	ret := make(map[string]string)
 	for _, k := range c.keys {
@@ -136,6 +147,7 @@ func (c KeyValueList) AsMap() map[string]string {
 	return ret
 }
 
+// LookupAll returns all values for a single key.  Runs in O(N).
 func (c KeyValueList) LookupAll(key string) []string {
 	ret := make([]string, 0, 1)
 	for _, k := range c.keys {
@@ -146,6 +158,8 @@ func (c KeyValueList) LookupAll(key string) []string {
 	return ret
 }
 
+// Lookup a single key's value.  Returns false if the key does not exist (to distinguish from valid keys without values).
+// Runs in O(N)
 func (c KeyValueList) Lookup(key string) (string, bool) {
 	for _, k := range c.keys {
 		if k.Key == key {
@@ -155,8 +169,18 @@ func (c KeyValueList) Lookup(key string) (string, bool) {
 	return "", false
 }
 
+// Get a single key's value.  Returns empty string if the key does not exist.  If you want to know if the key existed,
+// use Lookup or LookupAll.
+func (c KeyValueList) Get(key string) string {
+	ret, _ := c.Lookup(key)
+	return ret
+}
+
+// KeyValue is a pair of key + value
 type KeyValue struct {
-	Key   string
+	// The key of Key value pair
+	Key string
+	// The Value of key value pair
 	Value string
 }
 
@@ -167,6 +191,7 @@ func (k KeyValue) String() string {
 	return k.Key + ": " + k.Value
 }
 
+// BenchmarkValue is the result of one (of possibly many) benchmark numeric computations
 type BenchmarkValue struct {
 	Value float64
 	Unit  string
@@ -176,12 +201,18 @@ func (b BenchmarkValue) String() string {
 	return strconv.FormatFloat(b.Value, 'f', -1, 64) + " " + b.Unit
 }
 
+// BenchmarkResult is a single line of a benchmark result
 type BenchmarkResult struct {
-	Name       string
+	// Name of this benchmark
+	Name string
+	// Iterations the benchmark run for
 	Iterations int
-	Values     []BenchmarkValue
+	// Values computed by this benchmark.  Has at least one member
+	Values []BenchmarkValue
 }
 
+// NameAsKeyValue parses the name of the benchmark as a subtest/subbench split by / assuming you use
+// key=value naming for each sub test.
 func (b BenchmarkResult) NameAsKeyValue() KeyValueList {
 	nameParts := strings.Split(b.Name, "/")
 	var keys []KeyValue
@@ -201,8 +232,19 @@ func (b BenchmarkResult) NameAsKeyValue() KeyValueList {
 	return KeyValueList{keys: keys}
 }
 
+// BaseName returns the benchmark name with Benchmark trimmed off.  Can possibly be empty string.
 func (b BenchmarkResult) BaseName() string {
 	return strings.TrimPrefix(b.Name, "Benchmark")
+}
+
+// ValueByUnit returns the first value associated with a unit.  Returns false if the unit did not exist.
+func (b BenchmarkResult) ValueByUnit(unit string) (float64, bool) {
+	for _, v := range b.Values {
+		if unit == v.Unit {
+			return v.Value, true
+		}
+	}
+	return 0.0, false
 }
 
 func (b BenchmarkResult) String() string {

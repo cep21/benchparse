@@ -19,6 +19,7 @@ is defined at https://github.com/golang/proposal/blob/master/design/14313-benchm
         // Output:
     }
 ```
+
 # Design Rational
 
 Follows Encode/Encoder/Decode/Decoder pattern of json library.  Tries to follow spec strictly since benchmark results
