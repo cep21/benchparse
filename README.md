@@ -186,6 +186,11 @@ func ExampleBenchmarkResult_ValueByUnit() {
 }
 ```
 
+# Similar tools
+
+There is a similar tool at https://godoc.org/golang.org/x/tools/benchmark/parse which also parses benchmark output, but
+does so in a very limited way and not to the flexibility defined by the README spec.
+
 # Contributing
 
 Contributions welcome!  Submit a pull request on github and make sure your code passes `make lint test`.  For
