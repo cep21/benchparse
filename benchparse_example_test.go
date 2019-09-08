@@ -17,7 +17,7 @@ func ExampleDecoder_Decode() {
 	// Output: 0
 }
 
-func ExampleKeyValueList_Get() {
+func ExampleOrderedStringStringMap() {
 	d := benchparse.Decoder{}
 	run, err := d.Decode(strings.NewReader(`
 commit: 7cd9055
@@ -28,26 +28,10 @@ BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(run.Configuration.Get("commit"))
-	fmt.Println(run.Configuration.Get("justthekey"))
-	fmt.Println(run.Configuration.Get("does not exist"))
+	fmt.Println(run.Results[0].Configuration.Contents["commit"])
+	fmt.Println(run.Results[0].Configuration.Contents["justthekey"])
+	fmt.Println(run.Results[0].Configuration.Contents["does not exist"])
 	// Output: 7cd9055
 	//
 	//
-}
-
-func ExampleKeyValueList_Lookup() {
-	d := benchparse.Decoder{}
-	run, err := d.Decode(strings.NewReader(`
-commit: 7cd9055
-justthekey:
-
-BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	  64.88 MB/s	   40418 B/op	       7 allocs/op
-`))
-	if err != nil {
-		panic(err)
-	}
-	val, exists := run.Configuration.Lookup("does not exist")
-	fmt.Println(val, exists)
-	// Output: false
 }

@@ -23,7 +23,23 @@ is defined at https://github.com/golang/proposal/blob/master/design/14313-benchm
 # Design Rational
 
 Follows Encode/Encoder/Decode/Decoder pattern of json library.  Tries to follow spec strictly since benchmark results
-can also have extra output.
+can also have extra output.  Naming is derived from the proposal's format document.  The benchmark will be decoded
+into a structure like below
+
+```go
+// Run is the entire parsed output of a single benchmark run
+type Run struct {
+	Configuration KeyValueList
+	// Results are the result of running each benchmark
+	Results []BenchmarkResult
+}
+// KeyValueList is an ordered list of possibly repeating key/value pairs where a key may happen more than once
+type KeyValueList struct {
+	Keys []KeyValue
+}
+
+
+```
 
 # Contributing
 

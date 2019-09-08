@@ -1,8 +1,6 @@
 package benchparse
 
 import (
-	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -53,82 +51,40 @@ func TestDecoder_Decode(t *testing.T) {
 		run, err := d.Decode(strings.NewReader(readmeExample))
 		require.NoError(t, err)
 		require.Len(t, run.Results, 27)
-		require.Len(t, run.Configuration.keys, 9)
+		require.Len(t, run.Results[0].Configuration.Order, 9)
 	})
 }
 
-func TestDecoder_Decode_symetric(t *testing.T) {
-	symetric := []string {
-		"",
-		"akey: bob\n",
-		"akey:\n",
-		"akey: bob\nBenchmarkTest 1 10 ns/op\n",
-		"BenchmarkTest 1 10 ns/op\n",
-	}
-	for i, s := range symetric {
-		t.Run(fmt.Sprintf("run=%d", i), func(t *testing.T) {
-			d := Decoder{}
-			run, err := d.Decode(strings.NewReader(s))
+func TestKeyValueDecoder_decodeok(t *testing.T) {
+	verifyParses := func(kvLine string, key string, value string) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := KeyValueDecoder{}
+			kv, err := d.decode(kvLine)
 			require.NoError(t, err)
-			e := Encoder{}
-			buf := &bytes.Buffer{}
-			require.NoError(t, e.Encode(buf, run))
-			require.Equal(t, buf.String(), s)
-		})
+			require.Equal(t, kv.Key, key)
+			require.Equal(t, kv.Value, value)
+		}
 	}
+	t.Run("case=simple", verifyParses("akey: bob", "akey", "bob"))
+	t.Run("case=emptyvalue", verifyParses("akey: ", "akey", ""))
+	t.Run("case=spaces", verifyParses("akey:           bob", "akey", "bob"))
+	t.Run("case=strangechars", verifyParses("a--sdfds@#$%$34,>,: bob", "a--sdfds@#$%$34,>,", "bob"))
 }
 
-func TestDecoder_Decode_thesame(t *testing.T) {
-	type decodesSameAs struct {
-		base string
-		sameAs []string
+func TestKeyValueDecoder_decodeerror(t *testing.T) {
+	verifyFails := func(kvLine string, expectedErr error) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := KeyValueDecoder{}
+			_, err := d.decode(kvLine)
+			require.Error(t, err)
+			require.Equal(t, expectedErr, err)
+		}
 	}
-	sameAs := []decodesSameAs {
-		{
-			base: "",
-			sameAs: []string{
-				"invalid line",
-				"invalidkey:bob",
-				"BenchmarkInvalidLine 1",
-				"BenchmarkInvalidLine 1 ten ns/op",
-			},
-		},
-		{
-			base: "akey: bob\n",
-			sameAs: []string {
-				"akey:     bob",
-				"akey:\tbob",
-			},
-		},
-		{
-			base: "a--sdfds@#$%$34,>,: bob\n",
-			sameAs: []string {
-				"a--sdfds@#$%$34,>,:             bob\n",
-				"a--sdfds@#$%$34,>,:\t bob\n",
-			},
-		},
-		{
-			base: "BenchmarkBob 1 10 ns/op\n",
-			sameAs: []string {
-				"BenchmarkBob 1 10 ns/op\n",
-				"BenchmarkBob 1 10.0 ns/op\n",
-				"BenchmarkBob\t1\t10.0\tns/op\n",
-			},
-		},
-	}
-	for i, s := range sameAs {
-		t.Run(fmt.Sprintf("base=%d", i), func(t *testing.T) {
-			for j, sames := range s.sameAs {
-				t.Run(fmt.Sprintf("sameAs=%d", j), func(t *testing.T) {
-					d := Decoder{}
-					run, err := d.Decode(strings.NewReader(sames))
-					require.NoError(t, err)
-					e := Encoder{}
-					buf := &bytes.Buffer{}
-					require.NoError(t, e.Encode(buf, run))
-					require.Equal(t, s.base, buf.String())
-				})
-			}
-		})
-	}
+	t.Run("case=empty", verifyFails("", errInvalidKeyNoColon))
+	t.Run("case=upperstart", verifyFails("Akey: bob", errInvalidKeyValueLowercase))
+	t.Run("case=emptykey", verifyFails(": bob", errInvalidKeyValueEmpty))
+	t.Run("case=keywithspaces", verifyFails("a key: bob", errInvalidKeyValueSpaces))
+	t.Run("case=keywithtab", verifyFails("a\tkey: bob", errInvalidKeyValueSpaces))
+	t.Run("case=keywithnewline", verifyFails("a\nkey: bob", errInvalidKeyValueSpaces))
+	t.Run("case=valuewithnewline", verifyFails("akey: bo\nb", errInvalidKeyValueReturn))
 }

@@ -17,19 +17,30 @@ type Decoder struct {
 }
 
 // Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
-// for example from reading from in.
+// for example from reading from in.  The returned run is **NOT** intended to be modified.  It contains public members
+// for API convenience, and will share OrderedStringStringMap values to reduce memory allocations.  Do not modify
+// the returned Run and expect it to do anything you are wanting it to do.  Instead, create your own Run object and
+// assign values to it as you want.
 func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	ret := &Run{}
 	b := bufio.NewScanner(in)
+	var currentKeys OrderedStringStringMap
+	currentConfigurationIsDirty := false
 	for b.Scan() {
 		recentLine := strings.TrimSpace(b.Text())
 		kv, err := d.KeyValueDecoder.decode(recentLine)
 		if err == nil {
-			ret.Configuration.keys = append(ret.Configuration.keys, *kv)
+			if currentConfigurationIsDirty {
+				currentKeys = currentKeys.clone()
+				currentConfigurationIsDirty = false
+			}
+			currentKeys.add(kv.Key, kv.Value)
 			continue
 		}
 		brun, err := d.BenchmarkResultDecoder.decode(recentLine)
 		if err == nil {
+			brun.Configuration = currentKeys
+			currentConfigurationIsDirty = true
 			ret.Results = append(ret.Results, *brun)
 		}
 	}
@@ -38,7 +49,6 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	}
 	return ret, nil
 }
-
 
 // BenchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
 type BenchmarkResultDecoder struct {
@@ -52,20 +62,25 @@ var errEvenFields = errors.New("invalid BenchmarkResult: expect even number of f
 func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error) {
 	kvLine = strings.TrimSpace(kvLine)
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#benchmark-results
+	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
 	fields := strings.Fields(kvLine)
+	// "The line must have an even number of fields, and at least four."
 	if len(fields) < 4 {
 		return nil, errNotEnoughFields
 	}
 	if len(fields)%2 != 0 {
 		return nil, errEvenFields
 	}
+	// "The first field is the benchmark name, which must begin with Benchmark"
 	name := fields[0]
 	if !strings.HasPrefix(name, "Benchmark") {
 		return nil, errNoPrefixBenchmark
 	}
+	// "followed by an upper case character (as defined by unicode.IsUpper) or the end of the field, as in BenchmarkReverseString or just Benchmark."
 	if name != "Benchmark" && !unicode.IsUpper(rune(name[len("Benchmark")])) {
 		return nil, errUpperAfterBench
 	}
+	// "The second field gives the number of iterations run"
 	iterations, err := strconv.Atoi(fields[1])
 	if err != nil {
 		return nil, err
@@ -74,13 +89,15 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 		Name:       name,
 		Iterations: iterations,
 	}
+	// "fields report value/unit pairs"
 	for i := 2; i < len(fields); i += 2 {
 		unit := fields[i+1]
+		// "in which the value is a float64 that can be parsed by strconv.ParseFloat"
 		val, err := strconv.ParseFloat(fields[i], 64)
 		if err != nil {
 			return nil, err
 		}
-		ret.Values = append(ret.Values, BenchmarkValue{
+		ret.Values = append(ret.Values, Value{
 			Value: val,
 			Unit:  unit,
 		})
@@ -88,39 +105,43 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 	return ret, nil
 }
 
-var errInvalidKeyValue = errors.New("invalid keyvalue: no colon")
 var errInvalidKeyValueLowercase = errors.New("invalid keyvalue: expect lowercase start")
 var errInvalidKeyValueEmpty = errors.New("invalid keyvalue: empty key")
-var errInvalidKeyValueSpaces = errors.New("invalid keyvalue: key has spaces")
-var errInvalidKeyValueUppercase = errors.New("invalid keyvalue: key has upper case chars")
+var errInvalidKeyValueSpaces = errors.New("invalid keyvalue: key has spaces or upper case")
 var errInvalidKeyNoColon = errors.New("invalid keyvalue: key has no colon")
+var errInvalidKeyValueReturn = errors.New("invalid keyvalue: value has newline")
 
 func (k *KeyValueDecoder) decode(kvLine string) (*KeyValue, error) {
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#configuration-lines
-	firstSpace := strings.IndexFunc(kvLine, unicode.IsSpace)
-	if firstSpace == -1 {
-		return nil, errInvalidKeyValue
+	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
+	// "a key-value pair of the form `key: value`
+	firstColon := strings.Index(kvLine, ":")
+	if firstColon == -1 {
+		return nil, errInvalidKeyNoColon
 	}
-	// Key *must* start at the first space
-	key := strings.TrimRightFunc(kvLine[:firstSpace], unicode.IsSpace)
-	value := strings.TrimLeftFunc(kvLine[firstSpace:], unicode.IsSpace)
+	key := kvLine[:firstColon]
+	// Key can have spaces after the colon.  They should be removed.
+	// "one or more ASCII space or tab characters separate “key:” from “value.”
+	value := strings.TrimLeftFunc(kvLine[firstColon+1:], func(r rune) bool {
+		return r == ' ' || r == '\t'
+	})
+	// "where key begins with a lower case character"
 	if len(key) == 0 {
 		return nil, errInvalidKeyValueEmpty
 	}
-	// Key *must* contain a : at the end
-	if !strings.HasSuffix(key, ":") {
-		return nil, errInvalidKeyNoColon
-	}
-	// Trim ":" from the key
-	key = key[:len(key)-1]
+	// "where key begins with a lower case character (as defined by unicode.IsLower)"
 	if !unicode.IsLower(rune(key[0])) {
 		return nil, errInvalidKeyValueLowercase
 	}
-	if strings.IndexFunc(key, unicode.IsSpace) != -1 {
+	//  contains no space characters (as defined by unicode.IsSpace) nor upper case characters (as defined by unicode.IsUpper)
+	if strings.IndexFunc(key, func(r rune) bool {
+		return unicode.IsSpace(r) || unicode.IsUpper(r)
+	}) != -1 {
 		return nil, errInvalidKeyValueSpaces
 	}
-	if strings.IndexFunc(key, unicode.IsUpper) != -1 {
-		return nil, errInvalidKeyValueUppercase
+	// "There are no restrictions on value, except that it cannot contain a newline character"
+	if strings.Contains(value, "\n") {
+		return nil, errInvalidKeyValueReturn
 	}
 	return &KeyValue{
 		Key:   key,
@@ -136,12 +157,15 @@ type Encoder struct {
 }
 
 func (e *Encoder) Encode(w io.Writer, run *Run) error {
-	for _, kv := range run.Configuration.keys {
-		if _, err := fmt.Fprintf(w, "%s\n", kv.String()); err != nil {
-			return err
-		}
-	}
+	previousConfig := &OrderedStringStringMap{}
 	for _, r := range run.Results {
+		transition := previousConfig.valuesToTransition(&r.Configuration)
+		for i := range transition.Order {
+			if _, err := fmt.Fprintf(w, "%s: %s\n", transition.Order[i], transition.Contents[transition.Order[i]]); err != nil {
+				return err
+			}
+		}
+		previousConfig = &r.Configuration
 		if _, err := fmt.Fprintf(w, "%s\n", r.String()); err != nil {
 			return err
 		}
