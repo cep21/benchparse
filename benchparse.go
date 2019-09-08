@@ -5,22 +5,19 @@ import (
 	"strings"
 )
 
+const (
+	// UnitRuntime is the default unit for Go's runtime benchmark.  You're intended to call it with ValueByUnit.
+	UnitRuntime = "ns/op"
+	// UnitBytesAlloc is the default unit for Go's memory allocated benchmark.  You're intended to call it with ValueByUnit.
+	UnitBytesAlloc = "B/op"
+	// UnitObjectAllocs is the default unit for Go's # of allocs benchmark.  You're intended to call it with ValueByUnit.
+	UnitObjectAllocs = "allocs/op"
+)
+
 // Run is the entire parsed output of a single benchmark run
 type Run struct {
 	// Results are the result of running each benchmark
 	Results []BenchmarkResult
-}
-
-// ValueUnitPair is the result of one (of possibly many) benchmark numeric computations
-type ValueUnitPair struct {
-	// Value is the numeric result of a benchmark
-	Value float64
-	// Unit is the units this value is in
-	Unit string
-}
-
-func (b ValueUnitPair) String() string {
-	return strconv.FormatFloat(b.Value, 'f', -1, 64) + " " + b.Unit
 }
 
 // BenchmarkResult is a single line of a benchmark result
@@ -36,6 +33,18 @@ type BenchmarkResult struct {
 	// data by pointing to the same OrderedStringStringMap.  Do not modify the Configuration of any one BenchmarkResult
 	// unless you are **sure** they do not share the same OrderedStringStringMap data's backing.
 	Configuration *OrderedStringStringMap
+}
+
+// ValueUnitPair is the result of one (of possibly many) benchmark numeric computations
+type ValueUnitPair struct {
+	// Value is the numeric result of a benchmark
+	Value float64
+	// Unit is the units this value is in
+	Unit string
+}
+
+func (b ValueUnitPair) String() string {
+	return strconv.FormatFloat(b.Value, 'f', -1, 64) + " " + b.Unit
 }
 
 // NameAsKeyValue parses the name of the benchmark as a subtest/subbench split by / assuming you use
@@ -56,15 +65,6 @@ func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 	}
 	return &ret
 }
-
-// UnitRuntime is the default unit for Go's runtime benchmark.  You're intended to call it with ValueByUnit.
-const UnitRuntime = "ns/op"
-
-// UnitRuntime is the default unit for Go's memory allocated benchmark.  You're intended to call it with ValueByUnit.
-const UnitBytesAlloc = "B/op"
-
-// UnitRuntime is the default unit for Go's # of allocs benchmark.  You're intended to call it with ValueByUnit.
-const UnitObjectAllocs = "allocs/op"
 
 // ValueByUnit returns the first value associated with a unit.  Returns false if the unit did not exist.
 func (b BenchmarkResult) ValueByUnit(unit string) (float64, bool) {

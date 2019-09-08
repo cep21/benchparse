@@ -16,6 +16,26 @@ type Decoder struct {
 	benchmarkResultDecoder benchmarkResultDecoder
 }
 
+// keyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
+type keyValueDecoder struct {
+}
+
+// benchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
+type benchmarkResultDecoder struct {
+}
+
+// Encoder allows converting a Run object back into a format defined by the benchmark spec.
+type Encoder struct {
+}
+
+// keyValue is a pair of key + value
+type keyValue struct {
+	// The key of Key value pair
+	Key string
+	// The Value of key value pair
+	Value string
+}
+
 // Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
 // for example from reading from in.  The returned run is **NOT** intended to be modified.  It contains public members
 // for API convenience, and will share OrderedStringStringMap values to reduce memory allocations.  Do not modify
@@ -48,10 +68,6 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 		return nil, b.Err()
 	}
 	return ret, nil
-}
-
-// benchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
-type benchmarkResultDecoder struct {
 }
 
 var errNotEnoughFields = errors.New("invalid BenchmarkResult: not enough fields")
@@ -150,13 +166,6 @@ func (k *keyValueDecoder) decode(kvLine string) (*keyValue, error) {
 	}, nil
 }
 
-// keyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
-type keyValueDecoder struct {
-}
-
-type Encoder struct {
-}
-
 func (e *Encoder) Encode(w io.Writer, run *Run) error {
 	var previousConfig *OrderedStringStringMap
 	for _, r := range run.Results {
@@ -172,19 +181,4 @@ func (e *Encoder) Encode(w io.Writer, run *Run) error {
 		}
 	}
 	return nil
-}
-
-// keyValue is a pair of key + value
-type keyValue struct {
-	// The key of Key value pair
-	Key string
-	// The Value of key value pair
-	Value string
-}
-
-func (k keyValue) String() string {
-	if k.Value == "" {
-		return k.Key + ":"
-	}
-	return k.Key + ": " + k.Value
 }
