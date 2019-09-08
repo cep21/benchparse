@@ -24,7 +24,7 @@ type Decoder struct {
 func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	ret := &Run{}
 	b := bufio.NewScanner(in)
-	var currentKeys OrderedStringStringMap
+	currentKeys := new(OrderedStringStringMap)
 	currentConfigurationIsDirty := false
 	for b.Scan() {
 		recentLine := strings.TrimSpace(b.Text())
@@ -63,6 +63,7 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 	kvLine = strings.TrimSpace(kvLine)
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#benchmark-results
 	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
+	// "The fields are separated by runs of space characters (as defined by unicode.IsSpace), so the line can be parsed with strings.Fields."
 	fields := strings.Fields(kvLine)
 	// "The line must have an even number of fields, and at least four."
 	if len(fields) < 4 {
@@ -97,7 +98,7 @@ func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error)
 		if err != nil {
 			return nil, err
 		}
-		ret.Values = append(ret.Values, Value{
+		ret.Values = append(ret.Values, ValueUnitPair{
 			Value: val,
 			Unit:  unit,
 		})
@@ -157,15 +158,15 @@ type Encoder struct {
 }
 
 func (e *Encoder) Encode(w io.Writer, run *Run) error {
-	previousConfig := &OrderedStringStringMap{}
+	var previousConfig *OrderedStringStringMap
 	for _, r := range run.Results {
-		transition := previousConfig.valuesToTransition(&r.Configuration)
+		transition := previousConfig.valuesToTransition(r.Configuration)
 		for i := range transition.Order {
 			if _, err := fmt.Fprintf(w, "%s: %s\n", transition.Order[i], transition.Contents[transition.Order[i]]); err != nil {
 				return err
 			}
 		}
-		previousConfig = &r.Configuration
+		previousConfig = r.Configuration
 		if _, err := fmt.Fprintf(w, "%s\n", r.String()); err != nil {
 			return err
 		}

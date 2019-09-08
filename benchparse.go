@@ -11,13 +11,15 @@ type Run struct {
 	Results []BenchmarkResult
 }
 
-// Value is the result of one (of possibly many) benchmark numeric computations
-type Value struct {
+// ValueUnitPair is the result of one (of possibly many) benchmark numeric computations
+type ValueUnitPair struct {
+	// Value is the numeric result of a benchmark
 	Value float64
-	Unit  string
+	// Unit is the units this value is in
+	Unit string
 }
 
-func (b Value) String() string {
+func (b ValueUnitPair) String() string {
 	return strconv.FormatFloat(b.Value, 'f', -1, 64) + " " + b.Unit
 }
 
@@ -27,18 +29,18 @@ type BenchmarkResult struct {
 	Name string
 	// Iterations the benchmark run for.
 	Iterations int
-	// Values computed by this benchmark.  Has at least one member.
-	Values []Value
+	// Values computed by this benchmark.  len(Values) >= 1.
+	Values []ValueUnitPair
 	// Most benchmarks have the same configuration, but the spec allows a single set of benchmarks to have different
 	// configurations.  Note that as a memory saving feature, multiple BenchmarkResult may share the same Configuration
-	// data.  Do not modify the Configuration of any one BenchmarkResult unless you are **sure** they do not share the
-	// same OrderedStringStringMap data's backing.
-	Configuration OrderedStringStringMap
+	// data by pointing to the same OrderedStringStringMap.  Do not modify the Configuration of any one BenchmarkResult
+	// unless you are **sure** they do not share the same OrderedStringStringMap data's backing.
+	Configuration *OrderedStringStringMap
 }
 
 // NameAsKeyValue parses the name of the benchmark as a subtest/subbench split by / assuming you use
 // key=value naming for each sub test.  One expected format may be "BenchmarkQuery/runs=1000/dist=normal"
-func (b BenchmarkResult) NameAsKeyValue() OrderedStringStringMap {
+func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 	nameParts := strings.Split(b.Name, "/")
 	var ret OrderedStringStringMap
 	for _, p := range nameParts {
@@ -49,7 +51,7 @@ func (b BenchmarkResult) NameAsKeyValue() OrderedStringStringMap {
 			ret.add(sections[0], sections[1])
 		}
 	}
-	return ret
+	return &ret
 }
 
 // BaseName returns the benchmark name with Benchmark trimmed off.  Can possibly be empty string.

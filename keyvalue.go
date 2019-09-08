@@ -34,8 +34,11 @@ func (o *OrderedStringStringMap) valuesToTransition(newState *OrderedStringStrin
 	return ret
 }
 
-func (o *OrderedStringStringMap) clone() OrderedStringStringMap {
-	ret := OrderedStringStringMap{}
+func (o *OrderedStringStringMap) clone() *OrderedStringStringMap {
+	if o == nil {
+		return nil
+	}
+	ret := &OrderedStringStringMap{}
 	for i := range o.Order {
 		ret.add(o.Order[i], o.Contents[o.Order[i]])
 	}

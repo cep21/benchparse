@@ -1,6 +1,7 @@
 package benchparse
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -87,4 +88,29 @@ func TestKeyValueDecoder_decodeerror(t *testing.T) {
 	t.Run("case=keywithtab", verifyFails("a\tkey: bob", errInvalidKeyValueSpaces))
 	t.Run("case=keywithnewline", verifyFails("a\nkey: bob", errInvalidKeyValueSpaces))
 	t.Run("case=valuewithnewline", verifyFails("akey: bo\nb", errInvalidKeyValueReturn))
+}
+
+func TestEncoder_Encode_symetric(t *testing.T) {
+	symetricEncode := func(s string) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := Decoder{}
+			run, err := d.Decode(strings.NewReader(s))
+			require.NoError(t, err)
+			e := Encoder{}
+			var buf bytes.Buffer
+			require.NoError(t, e.Encode(&buf, run))
+			require.Equal(t, s, buf.String())
+		}
+	}
+	t.Run("case=empty", symetricEncode(""))
+	t.Run("case=readme", symetricEncode(`commit: 7cd9055
+BenchmarkDecode/text=digits/level=speed/size=1e4-8 100 154125 ns/op 64.88 MB/s 40418 B/op 7 allocs/op
+`))
+	t.Run("case=nokeys", symetricEncode(`BenchmarkDecode/text=digits/level=speed/size=1e4-8 100 154125 ns/op 64.88 MB/s 40418 B/op 7 allocs/op
+`))
+	t.Run("case=changekeys", symetricEncode(`commit: 7cd9055
+BenchmarkDecode/text=digits/level=speed/size=1e4-8 100 154125 ns/op 64.88 MB/s 40418 B/op 7 allocs/op
+commit: 7cd9056
+BenchmarkDecode/text=digits/level=speed/size=1e4-8 100 154125 ns/op 64.88 MB/s 40418 B/op 8 allocs/op
+`))
 }
