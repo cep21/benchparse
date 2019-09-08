@@ -39,7 +39,7 @@ func ExampleEncoder_Encode() {
 	// Output: BenchmarkBob 1 345 ns/op
 }
 
-func ExampleRun() {
+func ExampleDecoder_Decode_complete() {
 	d := benchparse.Decoder{}
 	run, err := d.Decode(strings.NewReader(`commit: 7cd9055
 BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	  64.88 MB/s	   40418 B/op	       7 allocs/op
@@ -71,7 +71,7 @@ func ExampleBenchmarkResult_NameAsKeyValue() {
 	// Output: digits
 }
 
-func ExampleRun_changingKeys() {
+func ExampleDecoder_Decode_changingkeys() {
 	d := benchparse.Decoder{}
 	run, err := d.Decode(strings.NewReader(`
 commit: 7cd9055
