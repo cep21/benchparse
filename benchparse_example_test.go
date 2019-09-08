@@ -63,7 +63,7 @@ BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	
 	// Does unit misses/op exist in the first run: false
 }
 
-func Example_ChangingKeys() {
+func ExampleRun_changingKeys() {
 	d := benchparse.Decoder{}
 	run, err := d.Decode(strings.NewReader(`
 commit: 7cd9055
