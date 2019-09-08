@@ -39,7 +39,10 @@ type BenchmarkResult struct {
 }
 
 // NameAsKeyValue parses the name of the benchmark as a subtest/subbench split by / assuming you use
-// key=value naming for each sub test.  One expected format may be "BenchmarkQuery/runs=1000/dist=normal"
+// key=value naming for each sub test.  One expected format may be "BenchmarkQuery/runs=1000/dist=normal".  For
+// pairs that do not contain a =, like "BenchmarkQuery" above, they will be stored inside OrderedStringStringMap with
+// the key as their name and an empty value.  If multiple keys are used (which is not recommended), then the last key's
+// value will be returned.
 func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 	nameParts := strings.Split(b.Name, "/")
 	var ret OrderedStringStringMap
@@ -52,11 +55,6 @@ func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 		}
 	}
 	return &ret
-}
-
-// BaseName returns the benchmark name with Benchmark trimmed off.  Can possibly be empty string.
-func (b BenchmarkResult) BaseName() string {
-	return strings.TrimPrefix(b.Name, "Benchmark")
 }
 
 // UnitRuntime is the default unit for Go's runtime benchmark.  You're intended to call it with ValueByUnit.

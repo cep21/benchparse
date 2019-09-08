@@ -49,7 +49,7 @@ BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	
 	}
 	fmt.Println("The number of results:", len(run.Results))
 	fmt.Println("Git commit:", run.Results[0].Configuration.Contents["commit"])
-	fmt.Println("Base name of first result:", run.Results[0].BaseName())
+	fmt.Println("Name of first benchmark:", run.Results[0].Name)
 	fmt.Println("Level config of first result:", run.Results[0].NameAsKeyValue().Contents["level"])
 	testRunTime, _ := run.Results[0].ValueByUnit(benchparse.UnitRuntime)
 	fmt.Println("Runtime of first result:", testRunTime)
@@ -57,10 +57,18 @@ BenchmarkDecode/text=digits/level=speed/size=1e4-8   	     100	    154125 ns/op	
 	fmt.Println("Does unit misses/op exist in the first run:", doesMissOpExists)
 	// Output: The number of results: 1
 	// Git commit: 7cd9055
-	// Base name of first result: Decode/text=digits/level=speed/size=1e4-8
+	// Name of first benchmark: BenchmarkDecode/text=digits/level=speed/size=1e4-8
 	// Level config of first result: speed
 	// Runtime of first result: 154125
 	// Does unit misses/op exist in the first run: false
+}
+
+func ExampleBenchmarkResult_NameAsKeyValue() {
+	b := benchparse.BenchmarkResult{
+		Name: "BenchmarkDecode/text=digits/level=speed/size=1e4-8",
+	}
+	fmt.Println(b.NameAsKeyValue().Contents["text"])
+	// Output: digits
 }
 
 func ExampleRun_changingKeys() {

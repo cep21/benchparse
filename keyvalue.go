@@ -72,18 +72,3 @@ func (o *OrderedStringStringMap) remove(s string) {
 		}
 	}
 }
-
-// KeyValue is a pair of key + value
-type KeyValue struct {
-	// The key of Key value pair
-	Key string
-	// The Value of key value pair
-	Value string
-}
-
-func (k KeyValue) String() string {
-	if k.Value == "" {
-		return k.Key + ":"
-	}
-	return k.Key + ": " + k.Value
-}

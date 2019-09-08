@@ -12,8 +12,8 @@ import (
 
 // Decoder helps configure how to decode benchmark results.
 type Decoder struct {
-	KeyValueDecoder        KeyValueDecoder
-	BenchmarkResultDecoder BenchmarkResultDecoder
+	keyValueDecoder        KeyValueDecoder
+	benchmarkResultDecoder BenchmarkResultDecoder
 }
 
 // Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
@@ -28,7 +28,7 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	currentConfigurationIsDirty := false
 	for b.Scan() {
 		recentLine := strings.TrimSpace(b.Text())
-		kv, err := d.KeyValueDecoder.decode(recentLine)
+		kv, err := d.keyValueDecoder.decode(recentLine)
 		if err == nil {
 			if currentConfigurationIsDirty {
 				currentKeys = currentKeys.clone()
@@ -37,7 +37,7 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 			currentKeys.add(kv.Key, kv.Value)
 			continue
 		}
-		brun, err := d.BenchmarkResultDecoder.decode(recentLine)
+		brun, err := d.benchmarkResultDecoder.decode(recentLine)
 		if err == nil {
 			brun.Configuration = currentKeys
 			currentConfigurationIsDirty = true
@@ -50,7 +50,7 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 	return ret, nil
 }
 
-// BenchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
+// benchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
 type BenchmarkResultDecoder struct {
 }
 
@@ -112,7 +112,7 @@ var errInvalidKeyValueSpaces = errors.New("invalid keyvalue: key has spaces or u
 var errInvalidKeyNoColon = errors.New("invalid keyvalue: key has no colon")
 var errInvalidKeyValueReturn = errors.New("invalid keyvalue: value has newline")
 
-func (k *KeyValueDecoder) decode(kvLine string) (*KeyValue, error) {
+func (k *KeyValueDecoder) decode(kvLine string) (*keyValue, error) {
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#configuration-lines
 	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
 	// "a key-value pair of the form `key: value`
@@ -144,13 +144,13 @@ func (k *KeyValueDecoder) decode(kvLine string) (*KeyValue, error) {
 	if strings.Contains(value, "\n") {
 		return nil, errInvalidKeyValueReturn
 	}
-	return &KeyValue{
+	return &keyValue{
 		Key:   key,
 		Value: strings.TrimLeftFunc(value, unicode.IsSpace),
 	}, nil
 }
 
-// KeyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
+// keyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
 type KeyValueDecoder struct {
 }
 
@@ -172,4 +172,19 @@ func (e *Encoder) Encode(w io.Writer, run *Run) error {
 		}
 	}
 	return nil
+}
+
+// keyValue is a pair of key + value
+type keyValue struct {
+	// The key of Key value pair
+	Key string
+	// The Value of key value pair
+	Value string
+}
+
+func (k keyValue) String() string {
+	if k.Value == "" {
+		return k.Key + ":"
+	}
+	return k.Key + ": " + k.Value
 }
