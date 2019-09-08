@@ -1,6 +1,7 @@
 package benchparse
 
-// OrderedStringStringMap is a map of strings to strings that maintains ordering.
+// OrderedStringStringMap is a map of strings to strings that maintains ordering.  Ordering allows symmetric encode/decode
+// operations of a benchmark run.  Plus, ordering is not strictly mentioned as unimportant in the spec.
 // This statement implies uniqueness of keys per benchmark.
 // "The interpretation of a key/value pair is up to tooling, but the key/value pair is considered to describe all benchmark results that follow, until overwritten by a configuration line with the same key."
 type OrderedStringStringMap struct {
@@ -34,6 +35,7 @@ func (o *OrderedStringStringMap) valuesToTransition(newState *OrderedStringStrin
 	return ret
 }
 
+// clone makes a deep copy of this object
 func (o *OrderedStringStringMap) clone() *OrderedStringStringMap {
 	if o == nil {
 		return nil
@@ -45,10 +47,12 @@ func (o *OrderedStringStringMap) clone() *OrderedStringStringMap {
 	return ret
 }
 
+// exists returns true if this key/value pair exists in the map
 func (o *OrderedStringStringMap) exists(k string, v string) bool {
 	return o.Contents[k] == v
 }
 
+// add a key to this map at the ordering "last"
 func (o *OrderedStringStringMap) add(k string, v string) {
 	if _, exists := o.Contents[k]; exists {
 		o.remove(k)
@@ -60,6 +64,7 @@ func (o *OrderedStringStringMap) add(k string, v string) {
 	o.Order = append(o.Order, k)
 }
 
+// remove a key from this map if it exists
 func (o *OrderedStringStringMap) remove(s string) {
 	if _, exists := o.Contents[s]; !exists {
 		return

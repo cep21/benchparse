@@ -38,11 +38,17 @@ type keyValue struct {
 }
 
 // Stream allows live processing of benchmarks.  onResult is executed on each BenchmarkResult.  Since context isn't
-// part of io.Reader, context is respected between reads from the input stream.
+// part of io.Reader, context is respected between reads from the input stream.  See Decode for more complete
+// documentation
 func (d Decoder) Stream(ctx context.Context, in io.Reader, onResult func(result BenchmarkResult)) error {
 	b := bufio.NewScanner(in)
+
+	// Values currentKeys and currentConfigurationIsDirty are used to share *OrderedStringStringMap objects
+	// between benchmark runs for efficiency.  Whenever currentKeys is dirty, it means any modification to that
+	// object first requires a deep copy.
 	currentKeys := new(OrderedStringStringMap)
 	currentConfigurationIsDirty := false
+
 	for b.Scan() {
 		recentLine := strings.TrimSpace(b.Text())
 		kv, err := d.keyValueDecoder.decode(recentLine)
@@ -93,7 +99,6 @@ var errUpperAfterBench = errors.New("invalid BenchmarkResult: no uppercase after
 var errEvenFields = errors.New("invalid BenchmarkResult: expect even number of fields")
 
 func (k *benchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error) {
-	kvLine = strings.TrimSpace(kvLine)
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#benchmark-results
 	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
 	// "The fields are separated by runs of space characters (as defined by unicode.IsSpace), so the line can be parsed with strings.Fields."
@@ -167,7 +172,7 @@ func (k *keyValueDecoder) decode(kvLine string) (*keyValue, error) {
 	if !unicode.IsLower(rune(key[0])) {
 		return nil, errInvalidKeyValueLowercase
 	}
-	//  contains no space characters (as defined by unicode.IsSpace) nor upper case characters (as defined by unicode.IsUpper)
+	// "contains no space characters (as defined by unicode.IsSpace) nor upper case characters (as defined by unicode.IsUpper)"
 	if strings.IndexFunc(key, func(r rune) bool {
 		return unicode.IsSpace(r) || unicode.IsUpper(r)
 	}) != -1 {
@@ -179,7 +184,7 @@ func (k *keyValueDecoder) decode(kvLine string) (*keyValue, error) {
 	}
 	return &keyValue{
 		Key:   key,
-		Value: strings.TrimLeftFunc(value, unicode.IsSpace),
+		Value: value,
 	}, nil
 }
 
