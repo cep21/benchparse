@@ -47,6 +47,17 @@ BenchmarkEncode/text=digits/level=best/size=1e4-8    	      20	    668083 ns/op	
 BenchmarkEncode/text=digits/level=best/size=1e5-8    	       1	  12301511 ns/op	   8.13 MB/s
 BenchmarkEncode/text=digits/level=best/size=1e6-8    	       1	 137962041 ns/op	   7.25 MB/s`
 
+const noisyExample = `commit: 7cd9055
+sdfa dsfa fads fdsaf dsf s fsda
+FDAs
+fs
+sfd
+fasdsdf
+SADF
+ASD
+ASDFSADbBenchmarkNoise
+BenchmarkEncode/text=digits/level=best/size=1e6-8    	       1	 137962041 ns/op	   7.25 MB/s`
+
 func TestDecoder_Decode(t *testing.T) {
 	t.Run("readme", func(t *testing.T) {
 		d := Decoder{}
@@ -54,6 +65,13 @@ func TestDecoder_Decode(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, run.Results, 27)
 		require.Len(t, run.Results[0].Configuration.Order, 9)
+	})
+	t.Run("noise", func(t *testing.T) {
+		d := Decoder{}
+		run, err := d.Decode(strings.NewReader(noisyExample))
+		require.NoError(t, err)
+		require.Len(t, run.Results, 1)
+		require.Len(t, run.Results[0].Configuration.Order, 1)
 	})
 }
 
