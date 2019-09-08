@@ -56,10 +56,50 @@ func TestDecoder_Decode(t *testing.T) {
 	})
 }
 
+func TestBenchmarkResultDecoder_decodeok(t *testing.T) {
+	verifyParses := func(line string, expected string) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := benchmarkResultDecoder{}
+			res, err := d.decode(line)
+			require.NoError(t, err)
+			require.Equal(t, expected, res.String())
+		}
+	}
+	t.Run("case=simple", verifyParses("Benchmark 1 10 ns/op", "Benchmark 1 10 ns/op"))
+	t.Run("case=named", verifyParses("BenchmarkBob 1 10 ns/op", "BenchmarkBob 1 10 ns/op"))
+	t.Run("case=manyspaces", verifyParses("BenchmarkBob       1\t10\t  \t  ns/op", "BenchmarkBob 1 10 ns/op"))
+	t.Run("case=tworesults", verifyParses("Benchmark 1 10 ns/op 5 MB/s", "Benchmark 1 10 ns/op 5 MB/s"))
+}
+
+func TestBenchmarkResultDecoder_decodebad(t *testing.T) {
+	verifyFails := func(line string, expected error) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := benchmarkResultDecoder{}
+			_, err := d.decode(line)
+			require.Error(t, err)
+			require.Equal(t, expected, err)
+		}
+	}
+	t.Run("case=tooshort", verifyFails("Benchmark 1 10", errNotEnoughFields))
+	t.Run("case=badprefix", verifyFails("TestBob 1 10 ns/op", errNoPrefixBenchmark))
+	t.Run("case=noupper", verifyFails("Benchmarkbob 1 10 ns/op", errUpperAfterBench))
+	t.Run("case=oddfields", verifyFails("Benchmarkbob 1 10 ns/op 5 MB/s 10", errEvenFields))
+
+	verifyFailsSomehow := func(line string) func(t *testing.T) {
+		return func(t *testing.T) {
+			d := benchmarkResultDecoder{}
+			_, err := d.decode(line)
+			require.Error(t, err)
+		}
+	}
+	t.Run("case=no_int_iters", verifyFailsSomehow("BenchmarkBob 1.5 10 ns/op"))
+	t.Run("case=no_float_value", verifyFailsSomehow("BenchmarkBob 1.5 10b ns/op"))
+}
+
 func TestKeyValueDecoder_decodeok(t *testing.T) {
 	verifyParses := func(kvLine string, key string, value string) func(t *testing.T) {
 		return func(t *testing.T) {
-			d := KeyValueDecoder{}
+			d := keyValueDecoder{}
 			kv, err := d.decode(kvLine)
 			require.NoError(t, err)
 			require.Equal(t, kv.Key, key)
@@ -75,7 +115,7 @@ func TestKeyValueDecoder_decodeok(t *testing.T) {
 func TestKeyValueDecoder_decodeerror(t *testing.T) {
 	verifyFails := func(kvLine string, expectedErr error) func(t *testing.T) {
 		return func(t *testing.T) {
-			d := KeyValueDecoder{}
+			d := keyValueDecoder{}
 			_, err := d.decode(kvLine)
 			require.Error(t, err)
 			require.Equal(t, expectedErr, err)

@@ -12,8 +12,8 @@ import (
 
 // Decoder helps configure how to decode benchmark results.
 type Decoder struct {
-	keyValueDecoder        KeyValueDecoder
-	benchmarkResultDecoder BenchmarkResultDecoder
+	keyValueDecoder        keyValueDecoder
+	benchmarkResultDecoder benchmarkResultDecoder
 }
 
 // Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
@@ -51,7 +51,7 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 }
 
 // benchmarkResultDecoder is used by Decoder to help it configure how to decode individual benchmark runs
-type BenchmarkResultDecoder struct {
+type benchmarkResultDecoder struct {
 }
 
 var errNotEnoughFields = errors.New("invalid BenchmarkResult: not enough fields")
@@ -59,7 +59,7 @@ var errNoPrefixBenchmark = errors.New("invalid BenchmarkResult: no prefix benchm
 var errUpperAfterBench = errors.New("invalid BenchmarkResult: no uppercase after benchmark name")
 var errEvenFields = errors.New("invalid BenchmarkResult: expect even number of fields")
 
-func (k *BenchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error) {
+func (k *benchmarkResultDecoder) decode(kvLine string) (*BenchmarkResult, error) {
 	kvLine = strings.TrimSpace(kvLine)
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#benchmark-results
 	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
@@ -112,7 +112,7 @@ var errInvalidKeyValueSpaces = errors.New("invalid keyvalue: key has spaces or u
 var errInvalidKeyNoColon = errors.New("invalid keyvalue: key has no colon")
 var errInvalidKeyValueReturn = errors.New("invalid keyvalue: value has newline")
 
-func (k *KeyValueDecoder) decode(kvLine string) (*keyValue, error) {
+func (k *keyValueDecoder) decode(kvLine string) (*keyValue, error) {
 	// https://github.com/golang/proposal/blob/master/design/14313-benchmark-format.md#configuration-lines
 	// Note: I thought about using a regex here, but the spec mentions specific functions so I use those directly.
 	// "a key-value pair of the form `key: value`
@@ -151,7 +151,7 @@ func (k *KeyValueDecoder) decode(kvLine string) (*keyValue, error) {
 }
 
 // keyValueDecoder is used by Decoder to help it configure how to decode key/value pairs of a benchmark result
-type KeyValueDecoder struct {
+type keyValueDecoder struct {
 }
 
 type Encoder struct {
