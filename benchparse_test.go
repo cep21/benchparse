@@ -85,15 +85,16 @@ func TestBenchmarkResultDecoder_decodebad(t *testing.T) {
 	t.Run("case=noupper", verifyFails("Benchmarkbob 1 10 ns/op", errUpperAfterBench))
 	t.Run("case=oddfields", verifyFails("Benchmarkbob 1 10 ns/op 5 MB/s 10", errEvenFields))
 
-	verifyFailsSomehow := func(line string) func(t *testing.T) {
+	verifyFailsSomehow := func(line string, msg string) func(t *testing.T) {
 		return func(t *testing.T) {
 			d := benchmarkResultDecoder{}
 			_, err := d.decode(line)
 			require.Error(t, err)
+			require.Equal(t, msg, err.Error())
 		}
 	}
-	t.Run("case=no_int_iters", verifyFailsSomehow("BenchmarkBob 1.5 10 ns/op"))
-	t.Run("case=no_float_value", verifyFailsSomehow("BenchmarkBob 1.5 10b ns/op"))
+	t.Run("case=no_int_iters", verifyFailsSomehow("BenchmarkBob 1.5 10 ns/op", "strconv.Atoi: parsing \"1.5\": invalid syntax"))
+	t.Run("case=no_float_value", verifyFailsSomehow("BenchmarkBob 1 10b ns/op", "strconv.ParseFloat: parsing \"10b\": invalid syntax"))
 }
 
 func TestKeyValueDecoder_decodeok(t *testing.T) {
