@@ -1,6 +1,7 @@
 package benchparse_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -69,6 +70,21 @@ func ExampleBenchmarkResult_NameAsKeyValue() {
 	}
 	fmt.Println(b.NameAsKeyValue().Contents["text"])
 	// Output: digits
+}
+
+func ExampleDecoder_Stream() {
+	d := benchparse.Decoder{}
+	err := d.Stream(context.Background(), strings.NewReader(`
+BenchmarkDecode   	     100	    154125 ns/op	  64.88 MB/s	   40418 B/op	       7 allocs/op
+BenchmarkEncode   	     100	    154125 ns/op	  64.88 MB/s	   40418 B/op	       8 allocs/op
+`), func(result benchparse.BenchmarkResult) {
+		fmt.Println("I got a result named", result.Name)
+	})
+	if err != nil {
+		panic(err)
+	}
+	// Output: I got a result named BenchmarkDecode
+	// I got a result named BenchmarkEncode
 }
 
 func ExampleDecoder_Decode_changingkeys() {

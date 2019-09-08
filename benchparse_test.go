@@ -2,6 +2,7 @@ package benchparse
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -54,6 +55,18 @@ func TestDecoder_Decode(t *testing.T) {
 		require.Len(t, run.Results, 27)
 		require.Len(t, run.Results[0].Configuration.Order, 9)
 	})
+}
+
+func TestDecoder_Stream(t *testing.T) {
+	ctx, can := context.WithCancel(context.Background())
+	can()
+	d := Decoder{}
+	i := 0
+	err := d.Stream(ctx, strings.NewReader(readmeExample), func(_ BenchmarkResult) {
+		i++
+	})
+	require.Error(t, err)
+	require.Equal(t, 0, i)
 }
 
 func TestBenchmarkResultDecoder_decodeok(t *testing.T) {

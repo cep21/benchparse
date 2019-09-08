@@ -2,6 +2,7 @@ package benchparse
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -36,13 +37,9 @@ type keyValue struct {
 	Value string
 }
 
-// Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
-// for example from reading from in.  The returned run is **NOT** intended to be modified.  It contains public members
-// for API convenience, and will share OrderedStringStringMap values to reduce memory allocations.  Do not modify
-// the returned Run and expect it to do anything you are wanting it to do.  Instead, create your own Run object and
-// assign values to it as you want.
-func (d Decoder) Decode(in io.Reader) (*Run, error) {
-	ret := &Run{}
+// Stream allows live processing of benchmarks.  onResult is executed on each BenchmarkResult.  Since context isn't
+// part of io.Reader, context is respected between reads from the input stream.
+func (d Decoder) Stream(ctx context.Context, in io.Reader, onResult func(result BenchmarkResult)) error {
 	b := bufio.NewScanner(in)
 	currentKeys := new(OrderedStringStringMap)
 	currentConfigurationIsDirty := false
@@ -61,11 +58,31 @@ func (d Decoder) Decode(in io.Reader) (*Run, error) {
 		if err == nil {
 			brun.Configuration = currentKeys
 			currentConfigurationIsDirty = true
-			ret.Results = append(ret.Results, *brun)
+			onResult(*brun)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 	}
 	if b.Err() != nil {
-		return nil, b.Err()
+		return b.Err()
+	}
+	return nil
+}
+
+// Decode an input stream into a benchmark run.  Returns an error if there are any issues decoding the benchmark,
+// for example from reading from in.  The returned run is **NOT** intended to be modified.  It contains public members
+// for API convenience, and will share OrderedStringStringMap values to reduce memory allocations.  Do not modify
+// the returned Run and expect it to do anything you are wanting it to do.  Instead, create your own Run object and
+// assign values to it as you want.
+func (d Decoder) Decode(in io.Reader) (*Run, error) {
+	ret := &Run{}
+	if err := d.Stream(context.Background(), in, func(result BenchmarkResult) {
+		ret.Results = append(ret.Results, result)
+	}); err != nil {
+		return nil, err
 	}
 	return ret, nil
 }
