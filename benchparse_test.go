@@ -162,6 +162,114 @@ func TestKeyValueDecoder_decodeerror(t *testing.T) {
 	t.Run("case=valuewithnewline", verifyFails("akey: bo\nb", errInvalidKeyValueReturn))
 }
 
+func TestBenchmarkResult_AllKeyValuePairs(t *testing.T) {
+	verifyPairs := func(in *BenchmarkResult, expected *OrderedStringStringMap) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Log(t.Name())
+			out := in.AllKeyValuePairs()
+			require.Equal(t, expected, out)
+		}
+	}
+	t.Run("case=simple", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob",
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+		},
+		Order: []string{
+			"BenchmarkBob",
+		},
+	}))
+	t.Run("case=simpleconfig", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob",
+		Configuration: &OrderedStringStringMap{
+			Contents: map[string]string{
+				"name": "bob",
+			},
+			Order: []string{
+				"name",
+			},
+		},
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+	t.Run("case=sometags", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob",
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+	t.Run("case=configmatches", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob",
+		Configuration: &OrderedStringStringMap{
+			Contents: map[string]string{
+				"name": "john",
+			},
+			Order: []string{
+				"name",
+			},
+		},
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+	t.Run("case=withdashnum", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob-8",
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+	t.Run("case=justdash", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob-",
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob-",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+	t.Run("case=dashmixed", verifyPairs(&BenchmarkResult{
+		Name: "BenchmarkBob/name=bob-3n",
+	}, &OrderedStringStringMap{
+		Contents: map[string]string{
+			"BenchmarkBob": "",
+			"name":         "bob-3n",
+		},
+		Order: []string{
+			"BenchmarkBob",
+			"name",
+		},
+	}))
+}
+
 func TestEncoder_Encode_symetric(t *testing.T) {
 	symetricEncode := func(s string) func(t *testing.T) {
 		return func(t *testing.T) {

@@ -3,6 +3,7 @@ package benchparse
 import (
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -52,6 +53,10 @@ func (b ValueUnitPair) String() string {
 // pairs that do not contain a =, like "BenchmarkQuery" above, they will be stored inside OrderedStringStringMap with
 // the key as their name and an empty value.  If multiple keys are used (which is not recommended), then the last key's
 // value will be returned.
+//
+// Note that there is one special case handling.  Many go benchmarks append a "-N" number to the end of the benchmark
+// name.  This can throw off key handling.  If you want to ignore this, you'll have to check the last value in your
+// returned map.
 func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 	nameParts := strings.Split(b.Name, "/")
 	var ret OrderedStringStringMap
@@ -62,6 +67,42 @@ func (b BenchmarkResult) NameAsKeyValue() *OrderedStringStringMap {
 		} else {
 			ret.add(sections[0], sections[1])
 		}
+	}
+	return &ret
+}
+
+// AllKeyValuePairs returns the combination of the configuration key/value pairs followed by the benchmark name's
+// key/value pairs.  It handles the special case of -N at the end of the last benchmark key/value pair by removing
+// anything matching "-(\d+)" from the last key/value pair of the benchmark name.
+func (b BenchmarkResult) AllKeyValuePairs() *OrderedStringStringMap {
+	var ret OrderedStringStringMap
+	if b.Configuration != nil {
+		for _, p := range b.Configuration.Order {
+			ret.add(p, b.Configuration.Contents[p])
+		}
+	}
+	namePart := b.NameAsKeyValue()
+	for i, p := range namePart.Order {
+		if i != len(namePart.Order)-1 {
+			ret.add(p, namePart.Contents[p])
+			continue
+		}
+		lastValue := namePart.Contents[p]
+		lastDash := strings.LastIndex(lastValue, "-")
+		if lastDash == -1 {
+			// No "-" means it doesn't match the pattern -N
+			ret.add(p, namePart.Contents[p])
+			continue
+		}
+		partAfterDash := lastValue[lastDash+1:]
+		if len(partAfterDash) == 0 || strings.IndexFunc(partAfterDash, func(r rune) bool {
+			return !unicode.IsNumber(r)
+		}) != -1 {
+			// Anything after the last - that isn't a number doesn't match the pattern either.
+			ret.add(p, namePart.Contents[p])
+			continue
+		}
+		ret.add(p, lastValue[0:lastDash])
 	}
 	return &ret
 }
