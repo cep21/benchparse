@@ -72,6 +72,20 @@ func ExampleBenchmarkResult_NameAsKeyValue() {
 	// Output: digits
 }
 
+func ExampleBenchmarkResult_AllKeyValuePairs() {
+	b := benchparse.BenchmarkResult{
+		Configuration: &benchparse.OrderedStringStringMap{
+			Contents: map[string]string{"commit": "a3abd32"},
+			Order:    []string{"commit"},
+		},
+		Name: "BenchmarkDecode/text=digits/level=speed/size=1e4-8",
+	}
+	fmt.Println(b.AllKeyValuePairs().Contents["size"])
+	fmt.Println(b.AllKeyValuePairs().Contents["commit"])
+	// Output: 1e4
+	// a3abd32
+}
+
 func ExampleDecoder_Stream() {
 	d := benchparse.Decoder{}
 	err := d.Stream(context.Background(), strings.NewReader(`
