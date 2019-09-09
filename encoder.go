@@ -50,7 +50,7 @@ func (d Decoder) Stream(ctx context.Context, in io.Reader, onResult func(result 
 	currentConfigurationIsDirty := false
 
 	for b.Scan() {
-		recentLine := strings.TrimSpace(b.Text())
+		recentLine := b.Text()
 		kv, err := d.keyValueDecoder.decode(recentLine)
 		if err == nil {
 			if currentConfigurationIsDirty {
