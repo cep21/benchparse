@@ -165,7 +165,6 @@ func TestKeyValueDecoder_decodeerror(t *testing.T) {
 func TestBenchmarkResult_AllKeyValuePairs(t *testing.T) {
 	verifyPairs := func(in *BenchmarkResult, expected *OrderedStringStringMap) func(t *testing.T) {
 		return func(t *testing.T) {
-			t.Log(t.Name())
 			out := in.AllKeyValuePairs()
 			require.Equal(t, expected, out)
 		}
